@@ -23,6 +23,7 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 #endregion
+using System;
 using System.Collections.Generic;
 using Mono.Cecil.Cil;
 using Telerik.JustDecompiler.Ast.Statements;
@@ -32,7 +33,7 @@ using Telerik.JustDecompiler.Steps;
 
 namespace Telerik.JustDecompiler.Decompiler
 {
-	public class DecompilationPipeline
+    public class DecompilationPipeline
     {
         private readonly List<IDecompilationStep> steps;
 
@@ -40,13 +41,13 @@ namespace Telerik.JustDecompiler.Decompiler
 
         public BlockStatement Body { get; protected set; }
 
-		public DecompilationPipeline(params IDecompilationStep [] steps)
-		: this(steps as IEnumerable<IDecompilationStep>)
-		{
-		}
+        public DecompilationPipeline(params IDecompilationStep[] steps)
+        : this(steps as IEnumerable<IDecompilationStep>)
+        {
+        }
 
         public DecompilationPipeline(IEnumerable<IDecompilationStep> steps)
-            :this(steps,null)
+            : this(steps, null)
         { }
 
         public DecompilationPipeline(IEnumerable<IDecompilationStep> steps, DecompilationContext context)
@@ -55,10 +56,10 @@ namespace Telerik.JustDecompiler.Decompiler
             this.steps = new List<IDecompilationStep>(steps);
         }
 
-		public void AddSteps(IEnumerable<IDecompilationStep> steps)
-		{
-			this.steps.AddRange(steps);
-		}
+        public void AddSteps(IEnumerable<IDecompilationStep> steps)
+        {
+            this.steps.AddRange(steps);
+        }
 
         public DecompilationContext Run(MethodBody body, ILanguage language)
         {
@@ -72,10 +73,23 @@ namespace Telerik.JustDecompiler.Decompiler
             return Context;
         }
 
+        [ThreadStatic]
+        static List<MethodBody> bodies = new List<MethodBody>();
+
         protected BlockStatement RunInternal(MethodBody body, BlockStatement block, ILanguage language)
         {
             try
             {
+                if (bodies == null)
+                {
+                    bodies = new List<MethodBody>();
+                }
+                if (bodies.Contains(body))
+                {
+                    return block;
+                }
+                bodies.Add(body);
+
                 if (body.Instructions.Count != 0 || body.Method.IsJustDecompileGenerated)
                 {
                     foreach (IDecompilationStep step in steps)
@@ -88,6 +102,7 @@ namespace Telerik.JustDecompiler.Decompiler
                         block = step.Process(Context, block);
                     }
                 }
+                bodies.Remove(body);
             }
             finally
             {
@@ -107,9 +122,9 @@ namespace Telerik.JustDecompiler.Decompiler
             return new DecompilationContext(methodSpecificContext, typeSpecificContext, language);
         }
 
-		public IEnumerable<IDecompilationStep> Steps
-		{
-			get { return steps; }
-		}
-	}
+        public IEnumerable<IDecompilationStep> Steps
+        {
+            get { return steps; }
+        }
+    }
 }
